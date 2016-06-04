@@ -25,7 +25,7 @@ DOCUMENTATION = '''
 module: os_router
 short_description: Create or delete routers from OpenStack
 extends_documentation_fragment: openstack
-version_added: "2.0"
+version_added: "2.2"
 author: "David Shrewsbury (@Shrews)"
 description:
    - Create or Delete routers from OpenStack. Although Neutron allows
