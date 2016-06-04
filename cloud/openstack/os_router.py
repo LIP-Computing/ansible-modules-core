@@ -25,7 +25,7 @@ DOCUMENTATION = '''
 module: os_router
 short_description: Create or delete routers from OpenStack
 extends_documentation_fragment: openstack
-version_added: "2.2"
+version_added: "2.0"
 author: "David Shrewsbury (@Shrews)"
 description:
    - Create or Delete routers from OpenStack. Although Neutron allows
@@ -64,6 +64,7 @@ options:
      type: string
      required: false
      default: None
+     version_added: "2.2"
    external_fixed_ips:
      description:
         - The IP address parameters for the external gateway network. Each
