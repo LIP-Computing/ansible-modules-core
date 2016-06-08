@@ -253,8 +253,6 @@ def _build_kwargs(cloud, module, router, network, project_id):
 
     if project_id:
         kwargs['project_id'] = project_id
-    else:
-        kwargs['project_id'] = module.params['project']
 
     if module.params['external_fixed_ips']:
         kwargs['ext_fixed_ips'] = []
