@@ -19,6 +19,8 @@ try:
 except ImportError:
     HAS_SHADE = False
 
+from distutils.version import StrictVersion
+
 
 DOCUMENTATION = '''
 ---
@@ -236,7 +238,7 @@ def _system_state_change(cloud, module, router, network, internal_ids):
     return False
 
 
-def _build_kwargs(cloud, module, router, network, project_id):
+def _build_kwargs(cloud, module, router, network):
     kwargs = {
         'admin_state_up': module.params['admin_state_up'],
     }
@@ -250,9 +252,6 @@ def _build_kwargs(cloud, module, router, network, project_id):
         kwargs['ext_gateway_net_id'] = network['id']
         # can't send enable_snat unless we have a network
         kwargs['enable_snat'] = module.params['enable_snat']
-
-    if project_id:
-        kwargs['project_id'] = project_id
 
     if module.params['external_fixed_ips']:
         kwargs['ext_fixed_ips'] = []
@@ -306,6 +305,11 @@ def main():
     if not HAS_SHADE:
         module.fail_json(msg='shade is required for this module')
 
+    if (module.params['project'] and
+            StrictVersion(shade.__version__) < StrictVersion('1.9.1')):
+        module.fail_json(msg="To utilize project, the installed version of"
+                             "the shade library MUST be >=1.9.1")
+
     state = module.params['state']
     name = module.params['name']
     network = module.params['network']
@@ -346,14 +350,16 @@ def main():
             changed = False
 
             if not router:
-                kwargs = _build_kwargs(cloud, module, router, net, project_id)
+                kwargs = _build_kwargs(cloud, module, router, net)
+                if project_id:
+                    kwargs['project_id'] = project_id
                 router = cloud.create_router(**kwargs)
                 for internal_subnet_id in internal_ids:
                     cloud.add_router_interface(router, subnet_id=internal_subnet_id)
                 changed = True
             else:
                 if _needs_update(cloud, module, router, net, internal_ids):
-                    kwargs = _build_kwargs(cloud, module, router, net, project_id)
+                    kwargs = _build_kwargs(cloud, module, router, net)
                     router = cloud.update_router(**kwargs)
 
                     # On a router update, if any internal interfaces were supplied,
