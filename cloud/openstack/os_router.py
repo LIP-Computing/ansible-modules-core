@@ -306,14 +306,14 @@ def main():
         module.fail_json(msg='shade is required for this module')
 
     if (module.params['project'] and
-            StrictVersion(shade.__version__) < StrictVersion('1.9.1')):
+            StrictVersion(shade.__version__) <= StrictVersion('1.9.0')):
         module.fail_json(msg="To utilize project, the installed version of"
-                             "the shade library MUST be >=1.9.1")
+                             "the shade library MUST be > 1.9.0")
 
     state = module.params['state']
     name = module.params['name']
     network = module.params['network']
-    project = module.params.pop('project')
+    project = module.params('project')
 
     if module.params['external_fixed_ips'] and not network:
         module.fail_json(msg='network is required when supplying external_fixed_ips')
