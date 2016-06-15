@@ -132,6 +132,7 @@ import subprocess
 OWNER_DIFF_RE = re.compile(r': Uid differs$')
 GROUP_DIFF_RE = re.compile(r': Gid differs$')
 MODE_DIFF_RE = re.compile(r': Mode differs$')
+MOD_TIME_DIFF_RE = re.compile(r': Mod time differs$')
 #NEWER_DIFF_RE = re.compile(r' is newer or same age.$')
 MISSING_FILE_RE = re.compile(r': Warning: Cannot stat: No such file or directory$')
 ZIP_FILE_MODE_RE = re.compile(r'([r-][w-][stx-]){3}')
@@ -312,13 +313,16 @@ class ZipArchive(object):
         for line in old_out.splitlines():
             change = False
 
-            pcs = line.split()
-            if len(pcs) != 8: continue
+            pcs = line.split(None, 7)
+
+            # Check first and seventh field in order to skip header/footer
+            if len(pcs[0]) != 7 and len(pcs[0]) != 10: continue
+            if len(pcs[6]) != 15: continue
 
             ztype = pcs[0][0]
             permstr = pcs[0][1:10]
-            version = pcs[0][1]
-            ostype = pcs[0][2]
+            version = pcs[1]
+            ostype = pcs[2]
             size = int(pcs[3])
             path = pcs[7]
 
@@ -594,6 +598,8 @@ class TgzArchive(object):
             if run_uid == 0 and not self.file_args['group'] and GROUP_DIFF_RE.search(line):
                 out += line + '\n'
             if not self.file_args['mode'] and MODE_DIFF_RE.search(line):
+                out += line + '\n'
+            if MOD_TIME_DIFF_RE.search(line):
                 out += line + '\n'
             if MISSING_FILE_RE.search(line):
                 out += line + '\n'

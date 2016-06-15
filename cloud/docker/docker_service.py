@@ -153,6 +153,7 @@ requirements:
     - "python >= 2.6"
     - "docker-compose >= 1.7.0"
     - "Docker API >= 1.20"
+    - "PyYAML >= 3.11"
 '''
 
 EXAMPLES = '''
@@ -402,14 +403,23 @@ actions:
                           type: string
 '''
 
+HAS_YAML = True
+HAS_YAML_EXC = None
 HAS_COMPOSE = True
 HAS_COMPOSE_EXC = None
+MINIMUM_COMPOSE_VERSION = '1.7.0'
 
-import yaml
+try:
+    import yaml
+except ImportError as exc:
+    HAS_YAML = False
+    HAS_YAML_EXC = str(exc)
 
+from distutils.version import LooseVersion
 from ansible.module_utils.basic import *
 
 try:
+    from compose import __version__ as compose_version
     from compose.cli.command import project_from_options
     from compose.service import ConvergenceStrategy
     from compose.cli.main import convergence_strategy_from_opts, build_action_from_opts, image_type_from_opt
@@ -474,6 +484,11 @@ class ContainerManager(DockerBaseClass):
         if self.files:
             self.options[u'--file'] = self.files
 
+        if LooseVersion(compose_version) < LooseVersion(MINIMUM_COMPOSE_VERSION):
+            self.client.fail("Found docker-compose version %s. Minimum required version is %s. "
+                             "Upgrade docker-compose to a min version of %s." %
+                             (compose_version, MINIMUM_COMPOSE_VERSION, MINIMUM_COMPOSE_VERSION))
+
         if not HAS_COMPOSE:
             self.client.fail("Unable to load docker-compose. Try `pip install docker-compose`. Error: %s" % HAS_COMPOSE_EXC)
 
@@ -481,6 +496,9 @@ class ContainerManager(DockerBaseClass):
         self.log(self.options, pretty_print=True)
 
         if self.definition:
+            if not HAS_YAML:
+                self.client.fail("Unable to load yaml. Try `pip install PyYAML`. Error: %s" % HAS_YAML_EXC)
+
             if not self.project_name:
                 self.client.fail("Parameter error - project_name required when providing definition.")
 

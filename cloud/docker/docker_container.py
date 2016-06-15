@@ -802,7 +802,6 @@ class TaskParameters(DockerBaseClass):
             tty='tty',
             ports='ports',
             environment='env',
-            dns='dns_servers',
             name='name',
             entrypoint='entrypoint',
             cpu_shares='cpu_shares',
@@ -1616,7 +1615,8 @@ class ContainerManager(DockerBaseClass):
                     self.diff['image_different'] = True
                 self.log("differences")
                 self.log(differences, pretty_print=True)
-                self.container_stop(container.Id)
+                if container.running:
+                    self.container_stop(container.Id)
                 self.container_remove(container.Id)
                 new_container = self.container_create(self.parameters.image, self.parameters.create_parameters)
                 if new_container:
@@ -1644,8 +1644,8 @@ class ContainerManager(DockerBaseClass):
                 self.container_stop(container.Id)
             self.container_remove(container.Id)
 
-    def fail(self, msg):
-        self.client.module.fail_json(msg=msg)
+    def fail(self, msg, **kwargs):
+        self.client.module.fail_json(msg=msg, **kwargs)
 
     def _get_container(self, container):
         '''
@@ -1773,12 +1773,19 @@ class ContainerManager(DockerBaseClass):
                 self.client.start(container=container_id)
             except Exception as exc:
                 self.fail("Error starting container %s: %s" % (container_id, str(exc)))
+
+            if not self.parameters.detach:
+                status = self.client.wait(container_id)
+                if status != 0:
+                    output = self.client.logs(container_id, stdout=True, stderr=True, stream=False, timestamps=False)
+                    self.fail(output, status=status)
+
         return self._get_container(container_id)
 
-    def container_remove(self, container_id, v=False, link=False, force=False):
-        volume_state = (True if self.parameters.keep_volumes else False)
-        self.log("remove container container:%s v:%s link:%s force%s" % (container_id, v, link, force))
-        self.results['actions'].append(dict(removed=container_id, volume_state=volume_state))
+    def container_remove(self, container_id, link=False, force=False):
+        volume_state = (not self.parameters.keep_volumes)  
+        self.log("remove container container:%s v:%s link:%s force%s" % (container_id, volume_state, link, force))
+        self.results['actions'].append(dict(removed=container_id, volume_state=volume_state, link=link, force=force))
         self.results['changed'] = True
         response = None
         if not self.check_mode:
@@ -1887,7 +1894,7 @@ def main():
         restart_policy=dict(type='str', choices=['no', 'on-failure', 'always', 'unless-stopped']),
         restart_retries=dict(type='int', default=0),
         shm_size=dict(type='str'),
-        security_opts=dict(type=list),
+        security_opts=dict(type='list'),
         state=dict(type='str', choices=['absent', 'present', 'started', 'stopped'], default='started'),
         stop_signal=dict(type='str'),
         stop_timeout=dict(type='int'),
