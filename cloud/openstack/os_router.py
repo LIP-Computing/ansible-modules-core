@@ -313,7 +313,7 @@ def main():
     state = module.params['state']
     name = module.params['name']
     network = module.params['network']
-    project = module.params('project')
+    project = module.params['project']
 
     if module.params['external_fixed_ips'] and not network:
         module.fail_json(msg='network is required when supplying external_fixed_ips')
@@ -384,9 +384,10 @@ def main():
                 # We need to detach all internal interfaces on a router before
                 # we will be allowed to delete it.
                 ports = cloud.list_router_interfaces(router, 'internal')
+                router_id = router['id']
                 for port in ports:
                     cloud.remove_router_interface(router, port_id=port['id'])
-                cloud.delete_router(name)
+                cloud.delete_router(router_id)
                 module.exit_json(changed=True)
 
     except shade.OpenStackCloudException as e:
